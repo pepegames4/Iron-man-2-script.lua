@@ -1,52 +1,9 @@
--- Script para Iron Man 2 Simulator
--- Adaptado y corregido para mayor estabilidad.
+--[[
+    Script para Iron Man 2 Simulator.
+    Adaptado y corregido para mayor estabilidad y compatibilidad.
+]]
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-local Window = Rayfield:CreateWindow({
-   Name = "Gui Iron Man 2 Simulator",
-   Icon = 0, 
-   LoadingTitle = "Iron Man 2 Script",
-   LoadingSubtitle = "by anonymous#0019",
-   ShowText = "Rayfield",
-   Theme = "Default", 
-
-   ToggleUIKeybind = "K", 
-
-   DisableRayfieldPrompts = false,
-   DisableBuildWarnings = false, 
-
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = nil, 
-      FileName = "Big Hub"
-   },
-
-   Discord = {
-      Enabled = true,
-      Invite = "noinvitelink",
-      RememberJoins = true 
-   },
-
-   KeySystem = true,
-   KeySettings = {
-      Title = "Key System",
-      Subtitle = "Key System",
-      Note = "No method of obtaining the key is provided", 
-      FileName = "Key", 
-      SaveKey = true,
-      GrabKeyFromSite = false, 
-      Key = {"admin"}
-   }
-})
-
--- Pestañas
-local PlayerTab = Window:CreateTab("Player", 4483362458)
-local SuitTab = Window:CreateTab("Traje", 6323423718)
-local MovementTab = Window:CreateTab("Movimiento", 6323423718)
-local TeleportTab = Window:CreateTab("Teletransporte", 204354226)
-
--- VARIABLES
+-- Variables globales
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -70,32 +27,36 @@ local isInvisible = false
 
 -- GODMODE JUGADOR
 local function applyGodModePlayer()
-    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.Health = GodModePlayer and math.huge or humanoid.MaxHealth
-        humanoid.MaxHealth = GodModePlayer and math.huge or 100
-    end
-    if GodModePlayer then
-        spawn(applyGodModePlayer)
-    end
+    spawn(function()
+        while GodModePlayer do
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.Health = humanoid.MaxHealth
+                humanoid.MaxHealth = math.huge
+            end
+            task.wait(0.1)
+        end
+    end)
 end
 
 -- GODMODE TRAJE (Armor)
 local function applyGodModeArmor()
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    for _, model in ipairs(char:GetChildren()) do
-        if model:IsA("Model") then
-            local h = model:FindFirstChildOfClass("Humanoid")
-            if h then
-                h.Health = GodModeArmor and math.huge or h.MaxHealth
-                h.MaxHealth = GodModeArmor and math.huge or 100
+    spawn(function()
+        while GodModeArmor do
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            for _, model in ipairs(char:GetChildren()) do
+                if model:IsA("Model") then
+                    local h = model:FindFirstChildOfClass("Humanoid")
+                    if h then
+                        h.Health = h.MaxHealth
+                        h.MaxHealth = math.huge
+                    end
+                end
             end
+            task.wait(0.1)
         end
-    end
-    if GodModeArmor then
-        task.wait(0.1)
-        spawn(applyGodModeArmor)
-    end
+    end)
 end
 
 -- NOCOOLDOWN
@@ -156,8 +117,8 @@ local function applyInfiniteArmorHealth()
                 if model:IsA("Model") then
                     local h = model:FindFirstChildOfClass("Humanoid")
                     if h then
-                        h.Health = h.MaxHealth or math.huge
-                        h.MaxHealth = h.MaxHealth or math.huge
+                        h.Health = h.MaxHealth
+                        h.MaxHealth = math.huge
                     end
                 end
             end
@@ -171,19 +132,22 @@ local function callSuitEvent(eventName, partName)
     local EventsFolder = ReplicatedStorage:FindFirstChild("Events")
     if EventsFolder then
         local Event = EventsFolder:FindFirstChild(eventName)
-        if Event then
-            if Event:IsA("RemoteEvent") then
-                pcall(function() Event:FireServer(partName) end)
-            elseif Event:IsA("RemoteFunction") then
-                pcall(function() Event:InvokeServer(partName) end)
-            end
+        if Event and (Event:IsA("RemoteEvent") or Event:IsA("RemoteFunction")) then
+            pcall(function()
+                if Event:IsA("RemoteEvent") then
+                    Event:FireServer(partName)
+                elseif Event:IsA("RemoteFunction") then
+                    Event:InvokeServer(partName)
+                end
+            end)
         end
     end
 end
 
 -- Supervelocidad
 local function applySpeed()
-    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
     if humanoid then
         humanoid.WalkSpeed = speedEnabled and 100 or 16
     end
@@ -191,7 +155,8 @@ end
 
 -- Supersalto
 local function applySuperJump()
-    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
     if humanoid then
         humanoid.JumpPower = jumpEnabled and 100 or 50
     end
@@ -200,7 +165,7 @@ end
 -- Fly
 local function applyFly()
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local root = char:FindFirstChild("HumanoidRootPart")
     
     if flyEnabled and root and not root:FindFirstChild("BodyVelocity") then
         local bv = Instance.new("BodyVelocity")
@@ -219,8 +184,8 @@ local function applyFly()
             end
         end
         game:GetService("RunService").RenderStepped:Connect(updateFly)
-    elseif not flyEnabled and root and root:FindFirstChildOfClass("BodyVelocity") then
-        root:FindFirstChildOfClass("BodyVelocity"):Destroy()
+    elseif not flyEnabled and root and root:FindFirstChild("BodyVelocity") then
+        root:FindFirstChild("BodyVelocity"):Destroy()
     end
 end
 
@@ -236,7 +201,7 @@ local function setInvisibility(is_invisible)
     end
 end
 
--- Función para reparar la armadura
+-- Reparar la armadura
 local function repairArmor()
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     for _, obj in ipairs(char:GetDescendants()) do
@@ -261,7 +226,7 @@ end
 -- Teleportar
 local function teleportPlayer(position)
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local humanoidRootPart = char and char:FindFirstChild("HumanoidRootPart")
+    local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
     if humanoidRootPart then
         humanoidRootPart.CFrame = CFrame.new(position)
     end
@@ -271,130 +236,181 @@ end
 -- CREACIÓN DE LA INTERFAZ
 -- ===================================
 
--- Pestaña Player
-PlayerTab:CreateToggle({
-    Name = "GodMode Jugador",
-    CurrentValue = false,
-    Flag = "GodModePlayerToggle",
-    Callback = function(Value)
-        GodModePlayer = Value
-        applyGodModePlayer()
-    end
-})
+local function createGUI()
+    local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-PlayerTab:CreateToggle({
-    Name = "GodMode Armor",
-    CurrentValue = false,
-    Flag = "GodModeArmorToggle",
-    Callback = function(Value)
-        GodModeArmor = Value
-        applyGodModeArmor()
-    end
-})
+    local Window = Rayfield:CreateWindow({
+       Name = "Gui Iron Man 2 Simulator",
+       Icon = 0, 
+       LoadingTitle = "Iron Man 2 Script",
+       LoadingSubtitle = "by anonymous#0019",
+       ShowText = "Rayfield",
+       Theme = "Default", 
 
-PlayerTab:CreateToggle({
-    Name = "NoCooldown",
-    CurrentValue = false,
-    Flag = "NoCooldownToggle",
-    Callback = function(Value)
-        NoCooldownEnabled = Value
-        if NoCooldownEnabled then removeCooldowns() end
-    end
-})
+       ToggleUIKeybind = "K", 
 
-PlayerTab:CreateToggle({
-    Name = "Energía Infinita",
-    CurrentValue = false,
-    Flag = "InfiniteEnergyToggle",
-    Callback = function(Value)
-        InfiniteEnergyEnabled = Value
-        if InfiniteEnergyEnabled then applyInfiniteEnergy() end
-    end
-})
+       DisableRayfieldPrompts = false,
+       DisableBuildWarnings = false, 
 
-PlayerTab:CreateToggle({
-    Name = "Vida Armor Infinita",
-    CurrentValue = false,
-    Flag = "InfiniteArmorHealthToggle",
-    Callback = function(Value)
-        InfiniteArmorHealthEnabled = Value
-        if InfiniteArmorHealthEnabled then applyInfiniteArmorHealth() end
-    end
-})
+       ConfigurationSaving = {
+          Enabled = true,
+          FolderName = nil, 
+          FileName = "Big Hub"
+       },
 
--- Pestaña Traje
-local suitParts = {"Torso", "Helmet", "Arms", "Legs", "Traje Completo"}
-for _, part in ipairs(suitParts) do
+       Discord = {
+          Enabled = true,
+          Invite = "noinvitelink",
+          RememberJoins = true 
+       },
+
+       KeySystem = true,
+       KeySettings = {
+          Title = "Key System",
+          Subtitle = "Key System",
+          Note = "No method of obtaining the key is provided", 
+          FileName = "Key", 
+          SaveKey = true,
+          GrabKeyFromSite = false, 
+          Key = {"admin"}
+       }
+    })
+
+    -- Pestañas
+    local PlayerTab = Window:CreateTab("Player", 4483362458)
+    local SuitTab = Window:CreateTab("Traje", 6323423718)
+    local MovementTab = Window:CreateTab("Movimiento", 6323423718)
+    local TeleportTab = Window:CreateTab("Teletransporte", 204354226)
+
+    -- Pestaña Player
+    PlayerTab:CreateToggle({
+        Name = "GodMode Jugador",
+        CurrentValue = false,
+        Flag = "GodModePlayerToggle",
+        Callback = function(Value)
+            GodModePlayer = Value
+            if GodModePlayer then applyGodModePlayer() end
+        end
+    })
+
+    PlayerTab:CreateToggle({
+        Name = "GodMode Armor",
+        CurrentValue = false,
+        Flag = "GodModeArmorToggle",
+        Callback = function(Value)
+            GodModeArmor = Value
+            if GodModeArmor then applyGodModeArmor() end
+        end
+    })
+
+    PlayerTab:CreateToggle({
+        Name = "NoCooldown",
+        CurrentValue = false,
+        Flag = "NoCooldownToggle",
+        Callback = function(Value)
+            NoCooldownEnabled = Value
+            if NoCooldownEnabled then removeCooldowns() end
+        end
+    })
+
+    PlayerTab:CreateToggle({
+        Name = "Energía Infinita",
+        CurrentValue = false,
+        Flag = "InfiniteEnergyToggle",
+        Callback = function(Value)
+            InfiniteEnergyEnabled = Value
+            if InfiniteEnergyEnabled then applyInfiniteEnergy() end
+        end
+    })
+
+    PlayerTab:CreateToggle({
+        Name = "Vida Armor Infinita",
+        CurrentValue = false,
+        Flag = "InfiniteArmorHealthToggle",
+        Callback = function(Value)
+            InfiniteArmorHealthEnabled = Value
+            if InfiniteArmorHealthEnabled then applyInfiniteArmorHealth() end
+        end
+    })
+
+    -- Pestaña Traje
+    local suitParts = {"Torso", "Helmet", "Arms", "Legs", "Traje Completo"}
+    for _, part in ipairs(suitParts) do
+        SuitTab:CreateButton({
+            Name = "Llamar "..part,
+            Callback = function()
+                local eventName = (part == "Traje Completo") and "RequestSuit" or "CallPiece"
+                callSuitEvent(eventName, part)
+            end
+        })
+    end
+
+    SuitTab:CreateToggle({
+        Name = "Modo Invisible",
+        CurrentValue = false,
+        Flag = "InvisibleToggle",
+        Callback = function(Value)
+            isInvisible = Value
+            setInvisibility(isInvisible)
+        end
+    })
+
     SuitTab:CreateButton({
-        Name = "Llamar "..part,
+        Name = "Reparar Armadura",
         Callback = function()
-            local eventName = (part == "Traje Completo") and "RequestSuit" or "CallPiece"
-            callSuitEvent(eventName, part)
+            repairArmor()
+        end
+    })
+
+    -- Pestaña Movimiento
+    MovementTab:CreateToggle({
+        Name = "Supervelocidad",
+        CurrentValue = false,
+        Callback = function(Value)
+            speedEnabled = Value
+            applySpeed()
+        end
+    })
+
+    MovementTab:CreateToggle({
+        Name = "Supersalto",
+        CurrentValue = false,
+        Callback = function(Value)
+            jumpEnabled = Value
+            applySuperJump()
+        end
+    })
+
+    MovementTab:CreateToggle({
+        Name = "Fly",
+        CurrentValue = false,
+        Callback = function(Value)
+            flyEnabled = Value
+            applyFly()
+        end
+    })
+
+    MovementTab:CreateSlider({
+        Name = "Velocidad de Vuelo",
+        Min = 10,
+        Max = 200,
+        Default = 50,
+        Callback = function(Value)
+            flySpeed = Value
+        end
+    })
+
+    -- Pestaña Teletransporte
+    TeleportTab:CreateButton({
+        Name = "Teleport a la Base",
+        Callback = function()
+            local base_coordinates = Vector3.new(0, 100, 0)
+            teleportPlayer(base_coordinates)
         end
     })
 end
 
--- Nuevas funciones de la armadura añadidas aquí
-SuitTab:CreateToggle({
-    Name = "Modo Invisible",
-    CurrentValue = false,
-    Flag = "InvisibleToggle",
-    Callback = function(Value)
-        isInvisible = Value
-        setInvisibility(isInvisible)
-    end
-})
-
-SuitTab:CreateButton({
-    Name = "Reparar Armadura",
-    Callback = function()
-        repairArmor()
-    end
-})
-
--- Pestaña Movimiento
-MovementTab:CreateToggle({
-    Name = "Supervelocidad",
-    CurrentValue = false,
-    Callback = function(Value)
-        speedEnabled = Value
-        applySpeed()
-    end
-})
-
-MovementTab:CreateToggle({
-    Name = "Supersalto",
-    CurrentValue = false,
-    Callback = function(Value)
-        jumpEnabled = Value
-        applySuperJump()
-    end
-})
-
-MovementTab:CreateToggle({
-    Name = "Fly",
-    CurrentValue = false,
-    Callback = function(Value)
-        flyEnabled = Value
-        applyFly()
-    end
-})
-
-MovementTab:CreateSlider({
-    Name = "Velocidad de Vuelo",
-    Min = 10,
-    Max = 200,
-    Default = 50,
-    Callback = function(Value)
-        flySpeed = Value
-    end
-})
-
--- Pestaña Teletransporte
-TeleportTab:CreateButton({
-    Name = "Teleport a la Base",
-    Callback = function()
-        local base_coordinates = Vector3.new(0, 100, 0)
-        teleportPlayer(base_coordinates)
-    end
-})
+-- Ejecutar la creación de la GUI solo si el jugador está en el juego
+if game.PlaceId == 6097258548 then
+    pcall(createGUI)
+end
